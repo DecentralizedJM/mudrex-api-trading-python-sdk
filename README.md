@@ -6,7 +6,7 @@
 
 **Unofficial Python SDK for [Mudrex Futures Trading API](https://docs.trade.mudrex.com)** - Trade crypto futures programmatically with ease.
 
-> 📝 **Personal Repository**: This is a community/personal project by [@DecentralizedJM](https://github.com/DecentralizedJM), PM of Mudrex API. Not officially maintained by Mudrex, but built with API expertise.
+> 📝 **Personal Repository**: This is a community/personal project by [@DecentralizedJM](https://github.com/DecentralizedJM). Not officially maintained by Mudrex, but built with API expertise.
 
 ## 🚀 Features
 
