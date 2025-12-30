@@ -5,14 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mudrex-trading-sdk"
 version = "1.0.0"
-description = "Official Python SDK for Mudrex Futures Trading API"
+description = "Unofficial Python SDK for Mudrex Futures Trading API"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Mudrex SDK Contributors", email = "support@mudrex.com"}
+    {name = "Jithin Mohandas (DecentralizedJM)", email = "mohandasjithin@gmail.com"}
 ]
 maintainers = [
-    {name = "Mudrex SDK Contributors", email = "support@mudrex.com"}
+    {name = "Jithin Mohandas (DecentralizedJM)", email = "mohandasjithin@gmail.com"}
 ]
 keywords = [
     "mudrex",

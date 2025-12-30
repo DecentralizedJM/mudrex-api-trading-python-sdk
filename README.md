@@ -4,7 +4,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub](https://img.shields.io/github/stars/DecentralizedJM/mudrex-trading-sdk?style=social)](https://github.com/DecentralizedJM/mudrex-trading-sdk)
 
-**Unofficial official Python SDK for [Mudrex Futures Trading API](https://docs.trade.mudrex.com)** - Trade crypto futures programmatically with ease.
+**Unofficial Python SDK for [Mudrex Futures Trading API](https://docs.trade.mudrex.com)** - Trade crypto futures programmatically with ease.
+
+> 📝 **Personal Repository**: This is a community/personal project by [@DecentralizedJM](https://github.com/DecentralizedJM), PM of Mudrex API. Not officially maintained by Mudrex, but built with API expertise.
 
 ## 🚀 Features
 
@@ -276,7 +278,11 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## � Contributors
+
+- [@DecentralizedJM](https://github.com/DecentralizedJM) - PM of Mudrex API, Creator & Maintainer
+
+## �📄 License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
