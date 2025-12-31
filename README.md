@@ -80,6 +80,26 @@ for position in client.positions.list_open():
 | `client.positions` | Manage positions, set SL/TP, close/reverse |
 | `client.fees` | View trading fee history |
 
+### API Endpoints Reference
+
+| Endpoint | Method | SDK Method |
+|----------|--------|------------|
+| `/wallet/funds` | POST | `client.wallet.get_spot_balance()` |
+| `/futures/funds` | GET | `client.wallet.get_futures_balance()` |
+| `/wallet/transfer` | POST | `client.wallet.transfer_to_futures()` |
+| `/futures/instruments` | GET | `client.assets.list_all()` |
+| `/futures/{asset}/instrument` | GET | `client.assets.get(asset_id)` |
+| `/futures/{asset}/leverage` | GET | `client.leverage.get(asset_id)` |
+| `/futures/{asset}/leverage` | POST | `client.leverage.set(asset_id, ...)` |
+| `/futures/{asset}/order` | POST | `client.orders.create_*_order()` |
+| `/futures/{asset}/orders` | GET | `client.orders.list_open()` |
+| `/futures/{asset}/order/{id}` | GET | `client.orders.get(order_id)` |
+| `/futures/{asset}/order/{id}` | DELETE | `client.orders.cancel(order_id)` |
+| `/futures/positions` | GET | `client.positions.list_open()` |
+| `/futures/positions/{id}/close` | POST | `client.positions.close(position_id)` |
+
+📖 [Full API Documentation](https://docs.trade.mudrex.com/docs/overview)
+
 ### Complete Trading Workflow
 
 ```python
