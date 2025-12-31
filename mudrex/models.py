@@ -61,42 +61,72 @@ class WalletType(str, Enum):
 
 @dataclass
 class WalletBalance:
-    """Spot wallet balance information."""
+    """Spot wallet balance information.
+    
+    Fields match API response from /wallet/funds (POST).
+    """
     total: str
-    available: str
+    withdrawable: str
+    invested: str = "0"
     rewards: str = "0"
-    withdrawable: str = "0"
-    currency: str = "USDT"
+    coin_investable: str = "0"
+    coinset_investable: str = "0"
+    vault_investable: str = "0"
+    
+    @property
+    def available(self) -> str:
+        """Alias for withdrawable (backwards compatibility)."""
+        return self.withdrawable
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WalletBalance":
         return cls(
             total=str(data.get("total", "0")),
-            available=str(data.get("available", "0")),
-            rewards=str(data.get("rewards", "0")),
             withdrawable=str(data.get("withdrawable", "0")),
-            currency=data.get("currency", "USDT"),
+            invested=str(data.get("invested", "0")),
+            rewards=str(data.get("rewards", "0")),
+            coin_investable=str(data.get("coin_investable", "0")),
+            coinset_investable=str(data.get("coinset_investable", "0")),
+            vault_investable=str(data.get("vault_investable", "0")),
         )
+    
+    def __repr__(self) -> str:
+        return f"WalletBalance(total={self.total}, withdrawable={self.withdrawable}, invested={self.invested})"
 
 
 @dataclass
 class FuturesBalance:
-    """Futures wallet balance information."""
+    """Futures wallet balance information.
+    
+    Fields match API response from /futures/funds (GET).
+    """
     balance: str
-    available_transfer: str
-    unrealized_pnl: str = "0"
-    margin_used: str = "0"
-    currency: str = "USDT"
+    locked_amount: str = "0"
+    first_time_user: bool = False
+    
+    @property
+    def available(self) -> str:
+        """Available balance (balance - locked_amount)."""
+        try:
+            return str(float(self.balance) - float(self.locked_amount))
+        except (ValueError, TypeError):
+            return self.balance
+    
+    @property
+    def available_transfer(self) -> str:
+        """Alias for available (backwards compatibility)."""
+        return self.available
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "FuturesBalance":
         return cls(
             balance=str(data.get("balance", "0")),
-            available_transfer=str(data.get("available_transfer", "0")),
-            unrealized_pnl=str(data.get("unrealized_pnl", "0")),
-            margin_used=str(data.get("margin_used", "0")),
-            currency=data.get("currency", "USDT"),
+            locked_amount=str(data.get("locked_amount", "0")),
+            first_time_user=data.get("first_time_user", False),
         )
+    
+    def __repr__(self) -> str:
+        return f"FuturesBalance(balance={self.balance}, locked={self.locked_amount}, available={self.available})"
 
 
 @dataclass
