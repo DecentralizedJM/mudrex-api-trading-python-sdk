@@ -1,4 +1,4 @@
-# Mudrex Python SDK
+# Mudrex Trading SDK (Python)
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -7,6 +7,8 @@
 **Unofficial Python SDK for [Mudrex Futures Trading API](https://docs.trade.mudrex.com/docs/overview)** - Trade crypto futures programmatically with ease.
 
 **Built and maintained by [DecentralizedJM](https://github.com/DecentralizedJM)**
+
+> 📦 **Other Languages:** [Go](https://github.com/DecentralizedJM/mudrex-go-sdk) | [Java](https://github.com/DecentralizedJM/mudrex-java-sdk) | [.NET](https://github.com/DecentralizedJM/mudrex-dotnet-sdk) | [Node.js](https://github.com/DecentralizedJM/mudrex-nodejs-sdk) | [SDK Registry](https://github.com/DecentralizedJM/mudrex-sdk-registry)
 
 ## 🚀 Features
 
@@ -289,7 +291,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 ## 🔗 Links
 
 - [Mudrex Trading API Docs](https://docs.trade.mudrex.com/docs/overview)
-- [API Quick Reference](https://docs.trade.mudrex.com/docs/overview)
+- [SDK Registry (All Languages)](https://github.com/DecentralizedJM/mudrex-sdk-registry)
 - [Mudrex Platform](https://mudrex.com)
 
 ## ⚠️ Disclaimer
