@@ -12,11 +12,10 @@
 
 ## 🚀 Features
 
-- **Simple & Intuitive** - Pythonic interface that feels natural
-- **Type-Safe** - Full type hints and dataclass models
-- **Battle-Tested** - Built-in rate limiting, retries, and error handling
-- **Well-Documented** - Comprehensive examples and docstrings
-- **Production-Ready** - Designed for real trading applications
+- **Full API Coverage** - Wallet, orders, positions, leverage, assets, and fees
+- **Type Hints** - Dataclass models for all API responses
+- **Error Handling** - Typed exceptions for authentication, rate limits, and validation errors
+- **Rate Limit Aware** - Respects API limits (2/s, 50/min, 1000/hr, 10000/day)
 
 ## 📦 Installation
 
