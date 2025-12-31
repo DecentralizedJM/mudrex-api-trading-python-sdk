@@ -51,7 +51,7 @@ class WalletAPI(BaseAPI):
             >>> print(f"Available: ${balance.available}")
             >>> print(f"Withdrawable: ${balance.withdrawable}")
         """
-        response = self._get("/wallet/funds")
+        response = self._post("/wallet/funds")
         return WalletBalance.from_dict(response.get("data", response))
     
     def get_futures_balance(self) -> FuturesBalance:
@@ -69,7 +69,7 @@ class WalletAPI(BaseAPI):
             >>> print(f"Balance: ${balance.balance}")
             >>> print(f"Unrealized PnL: ${balance.unrealized_pnl}")
         """
-        response = self._post("/futures/funds")
+        response = self._get("/futures/funds")
         return FuturesBalance.from_dict(response.get("data", response))
     
     def transfer_to_futures(self, amount: str) -> TransferResult:
