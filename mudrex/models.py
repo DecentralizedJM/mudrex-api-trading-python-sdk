@@ -36,6 +36,7 @@ class MarginType(str, Enum):
 
 class OrderStatus(str, Enum):
     """Order status values."""
+    CREATED = "CREATED"  # Order created (async processing)
     OPEN = "OPEN"
     FILLED = "FILLED"
     PARTIALLY_FILLED = "PARTIALLY_FILLED"
