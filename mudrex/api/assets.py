@@ -64,13 +64,13 @@ class AssetsAPI(BaseAPI):
             >>> print(f"USDT pairs: {len(usdt_pairs)}")
         """
         all_assets = []
-        page = 1
-        per_page = 100  # Max per page for efficiency
+        offset = 0
+        limit = 100  # Fetch 100 assets per request for efficiency
         
         while True:
             params = {
-                "page": page,
-                "per_page": per_page,
+                "offset": offset,
+                "limit": limit,
             }
             if sort_by:
                 params["sort_by"] = sort_by
@@ -91,10 +91,10 @@ class AssetsAPI(BaseAPI):
             all_assets.extend([Asset.from_dict(item) for item in items])
             
             # Check if we've gotten all items
-            if len(items) < per_page:
+            if len(items) < limit:
                 break
             
-            page += 1
+            offset += limit
         
         return all_assets
     
