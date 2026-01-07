@@ -67,6 +67,38 @@ class TestAsset:
         assert asset.symbol == "BTCUSDT"
         assert asset.base_currency == "BTC"
         assert asset.max_leverage == "100"
+    
+    def test_from_dict_with_price_step(self):
+        """Test that Asset correctly parses price_step from API response.
+        
+        The API returns price_step (tick size) which is required for 
+        proper order price rounding.
+        """
+        data = {
+            "id": "01903a7b-bf65-707d-a7dc-d7b84c3c756c",
+            "name": "Bitcoin",
+            "symbol": "BTCUSDT",
+            "min_contract": "0.001",
+            "max_contract": "1190",
+            "quantity_step": "0.001",
+            "min_price": "0.1",
+            "max_price": "1999999.8",
+            "price_step": "0.1",
+            "min_leverage": "1",
+            "max_leverage": "100",
+            "trading_fee_perc": "0.1",
+            "price": "114550"
+        }
+        asset = Asset.from_dict(data)
+        
+        assert asset.price_step == "0.1"
+        assert asset.min_price == "0.1"
+        assert asset.max_price == "1999999.8"
+        assert asset.price == "114550"
+        assert asset.name == "Bitcoin"
+        # Also verify field mapping for alternative names
+        assert asset.min_quantity == "0.001"  # from min_contract
+        assert asset.max_quantity == "1190"   # from max_contract
 
 
 class TestOrder:

@@ -170,6 +170,13 @@ class Asset:
     maker_fee: str
     taker_fee: str
     is_active: bool = True
+    # Price precision fields (for order rounding)
+    price_step: Optional[str] = None  # Tick size for price rounding
+    min_price: Optional[str] = None
+    max_price: Optional[str] = None
+    # Current market data
+    price: Optional[str] = None  # Current price
+    name: Optional[str] = None  # Asset display name (e.g., "Bitcoin")
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Asset":
@@ -178,14 +185,21 @@ class Asset:
             symbol=data.get("symbol", ""),
             base_currency=data.get("base_currency", ""),
             quote_currency=data.get("quote_currency", "USDT"),
-            min_quantity=str(data.get("min_quantity", "0")),
-            max_quantity=str(data.get("max_quantity", "0")),
+            min_quantity=str(data.get("min_quantity", data.get("min_contract", "0"))),
+            max_quantity=str(data.get("max_quantity", data.get("max_contract", "0"))),
             quantity_step=str(data.get("quantity_step", "0")),
             min_leverage=str(data.get("min_leverage", "1")),
             max_leverage=str(data.get("max_leverage", "100")),
             maker_fee=str(data.get("maker_fee", "0")),
-            taker_fee=str(data.get("taker_fee", "0")),
+            taker_fee=str(data.get("taker_fee", data.get("trading_fee_perc", "0"))),
             is_active=data.get("is_active", True),
+            # Price precision fields
+            price_step=data.get("price_step"),
+            min_price=data.get("min_price"),
+            max_price=data.get("max_price"),
+            # Market data
+            price=data.get("price"),
+            name=data.get("name"),
         )
 
 
