@@ -131,6 +131,55 @@ class TestPosition:
         
         # PnL = 1.00, Margin = 10, so percentage = 10%
         assert position.pnl_percentage == 10.0
+    
+    def test_from_dict_with_nested_stoploss(self):
+        """Test that Position correctly parses nested stoploss/takeprofit from API response.
+        
+        The Mudrex API returns SL/TP as nested objects:
+        {"stoploss": {"price": "4100", "order_id": "...", "order_type": "SHORT"}}
+        """
+        data = {
+            "id": "pos_12345",
+            "symbol": "ETHUSDT",
+            "order_type": "LONG",
+            "quantity": "0.02",
+            "entry_price": "4133.41",
+            "mark_price": "4150.00",
+            "leverage": "50",
+            "margin": "10",
+            "unrealized_pnl": "0.33",
+            "realized_pnl": "0",
+            "liquidation_price": "4071.1",
+            "stoploss": {"price": "4100", "order_id": "sl_123", "order_type": "SHORT"},
+            "takeprofit": {"price": "5000", "order_id": "tp_123", "order_type": "SHORT"},
+            "status": "OPEN"
+        }
+        position = Position.from_dict(data)
+        
+        assert position.stoploss_price == "4100"
+        assert position.takeprofit_price == "5000"
+    
+    def test_from_dict_with_flat_stoploss(self):
+        """Test backwards compatibility with flat stoploss_price field."""
+        data = {
+            "id": "pos_12345",
+            "symbol": "BTCUSDT",
+            "order_type": "SHORT",
+            "quantity": "0.001",
+            "entry_price": "100000",
+            "mark_price": "99000",
+            "leverage": "10",
+            "margin": "100",
+            "unrealized_pnl": "10",
+            "realized_pnl": "0",
+            "stoploss_price": "101000",
+            "takeprofit_price": "95000",
+            "status": "OPEN"
+        }
+        position = Position.from_dict(data)
+        
+        assert position.stoploss_price == "101000"
+        assert position.takeprofit_price == "95000"
 
 
 class TestEnums:

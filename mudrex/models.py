@@ -311,6 +311,22 @@ class Position:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Position":
+        # Extract stoploss_price from nested structure (API format) or flat field (legacy)
+        # API returns: {"stoploss": {"price": "4100", "order_id": "...", "order_type": "SHORT"}}
+        stoploss_data = data.get("stoploss")
+        if isinstance(stoploss_data, dict):
+            stoploss_price = stoploss_data.get("price")
+        else:
+            stoploss_price = data.get("stoploss_price")
+        
+        # Extract takeprofit_price from nested structure (API format) or flat field (legacy)
+        # API returns: {"takeprofit": {"price": "5000", "order_id": "...", "order_type": "SHORT"}}
+        takeprofit_data = data.get("takeprofit")
+        if isinstance(takeprofit_data, dict):
+            takeprofit_price = takeprofit_data.get("price")
+        else:
+            takeprofit_price = data.get("takeprofit_price")
+        
         return cls(
             position_id=data.get("position_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
@@ -324,8 +340,8 @@ class Position:
             unrealized_pnl=str(data.get("unrealized_pnl", "0")),
             realized_pnl=str(data.get("realized_pnl", "0")),
             liquidation_price=data.get("liquidation_price"),
-            stoploss_price=data.get("stoploss_price"),
-            takeprofit_price=data.get("takeprofit_price"),
+            stoploss_price=stoploss_price,
+            takeprofit_price=takeprofit_price,
             status=PositionStatus(data.get("status", "OPEN")),
             created_at=_parse_datetime(data.get("created_at")),
         )
