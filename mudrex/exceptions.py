@@ -167,12 +167,24 @@ def raise_for_error(response: Dict[str, Any], status_code: int) -> None:
     Raises:
         MudrexAPIError: Or a more specific subclass based on error code
     """
-    if response.get("success", True):
+    # Check if success is explicitly False (some endpoints don't return success on error)
+    if response.get("success", True) and status_code < 400:
         return
     
     code = response.get("code", "UNKNOWN_ERROR")
     message = response.get("message", "An unknown error occurred")
     request_id = response.get("requestId")
+    
+    # Check for errors array (common Mudrex API format)
+    errors = response.get("errors", [])
+    if errors:
+        # Extract detailed error messages from errors array
+        error_texts = [e.get("text", e.get("message", str(e))) for e in errors]
+        if error_texts:
+            message = "; ".join(error_texts)
+            # Try to extract error code from first error
+            if errors[0].get("code"):
+                code = errors[0].get("code")
     
     exception_class = ERROR_CODE_MAP.get(code, MudrexAPIError)
     

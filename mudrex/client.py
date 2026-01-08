@@ -205,6 +205,8 @@ class MudrexClient:
                     )
                 
                 # Raise for other errors
+                if response.status_code >= 400:
+                    logger.error(f"API error response ({response.status_code}): {data}")
                 raise_for_error(data, response.status_code)
                 
                 return data
