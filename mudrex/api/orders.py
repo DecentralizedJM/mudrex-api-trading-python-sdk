@@ -177,8 +177,17 @@ class OrdersAPI(BaseAPI):
                 # Determine precision from quantity_step
                 precision = len(str(quantity_step).split('.')[-1]) if '.' in str(quantity_step) else 0
                 quantity = str(round(rounded_qty, precision))
+            
+            # Auto-round price to match asset's price_step (tick size)
+            if price and asset.price_step:
+                price_step = float(asset.price_step)
+                if price_step > 0:
+                    raw_price = float(price)
+                    rounded_price = round(raw_price / price_step) * price_step
+                    price_precision = len(str(asset.price_step).split('.')[-1]) if '.' in str(asset.price_step) else 0
+                    price = str(round(rounded_price, price_precision))
         except Exception:
-            # If asset fetch fails, use quantity as-is
+            # If asset fetch fails, use values as-is
             pass
         
         # Mudrex API requires order_price even for MARKET orders
