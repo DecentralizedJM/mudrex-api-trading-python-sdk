@@ -42,8 +42,14 @@ class PositionsAPI(BaseAPI):
         """
         Get all open positions.
         
+        **CRITICAL**: This method always fetches fresh position data directly from the
+        Mudrex exchange API. Position data (including quantity, mark_price, and exposure)
+        comes from the exchange, NOT from any internal state or cache. This prevents
+        "Ghost Positions" where positions appear to exist but don't actually exist on
+        the exchange.
+        
         Returns:
-            List[Position]: List of open positions
+            List[Position]: List of open positions from the exchange
             
         Example:
             >>> positions = client.positions.list_open()
@@ -54,6 +60,8 @@ class PositionsAPI(BaseAPI):
             ...     print(f"  Current: ${pos.mark_price}")
             ...     print(f"  PnL: ${pos.unrealized_pnl} ({pos.pnl_percentage:.2f}%)")
         """
+        # Always fetch fresh data from exchange API - never use cached state
+        # This prevents "Ghost Positions" where exposure comes from state instead of exchange
         response = self._get("/futures/positions")
         
         # Handle None or empty responses
@@ -78,12 +86,17 @@ class PositionsAPI(BaseAPI):
         """
         Get details of a specific position.
         
+        **CRITICAL**: This method always fetches fresh position data directly from the
+        Mudrex exchange API. Position data comes from the exchange, NOT from any
+        internal state or cache.
+        
         Args:
             position_id: The position ID to retrieve
             
         Returns:
-            Position: Position details
+            Position: Position details from the exchange
         """
+        # Always fetch fresh data from exchange API - never use cached state
         response = self._get(f"/futures/positions/{position_id}")
         return Position.from_dict(response.get("data", response))
     

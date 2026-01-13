@@ -1,8 +1,8 @@
 """
-Helper utilities for smarter order handling.
+Helper utilities for smarter order handling and API response normalization.
 """
 
-from typing import Tuple
+from typing import Tuple, Dict, Any, Optional
 
 def calculate_order_from_usd(
     usd_amount: float,
@@ -54,3 +54,39 @@ def validate_quantity(quantity: float, quantity_step: float) -> bool:
     remainder = quantity % quantity_step
     # Allow small floating point errors
     return abs(remainder) < (quantity_step * 0.01)
+
+
+def normalize_quantity(data: Dict[str, Any]) -> str:
+    """
+    Normalize quantity/size terminology from API responses.
+    
+    The Mudrex API inconsistently uses 'quantity' and 'size' for the same field.
+    This function normalizes to 'quantity' to prevent silent zeros in calculations.
+    
+    Args:
+        data: API response dictionary
+    
+    Returns:
+        Normalized quantity as string
+    """
+    # Try quantity first, then size, then default to "0"
+    quantity = data.get("quantity") or data.get("size") or "0"
+    return str(quantity)
+
+
+def normalize_mark_price(data: Dict[str, Any]) -> str:
+    """
+    Normalize mark_price/market_price terminology from API responses.
+    
+    The Mudrex API inconsistently uses 'mark_price' and 'market_price' for the same field.
+    This function normalizes to 'mark_price' to prevent silent zeros in calculations.
+    
+    Args:
+        data: API response dictionary
+    
+    Returns:
+        Normalized mark price as string
+    """
+    # Try mark_price first, then market_price, then default to "0"
+    price = data.get("mark_price") or data.get("market_price") or "0"
+    return str(price)

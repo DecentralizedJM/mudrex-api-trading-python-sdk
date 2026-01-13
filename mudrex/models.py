@@ -11,6 +11,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional, List, Dict, Any
 
+from mudrex.utils import normalize_quantity, normalize_mark_price
+
 
 # ============================================================================
 # Enums
@@ -281,6 +283,14 @@ class Order:
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Order":
+        # Normalize terminology: Handle both quantity/size (API inconsistency)
+        # Always use "quantity" internally to prevent silent zeros
+        # This prevents "ghost math" where calculations silently evaluate to zero
+        quantity_value = normalize_quantity(data)
+        # Handle filled_quantity/filled_size
+        filled_quantity_value = data.get("filled_quantity") or data.get("filled_size") or "0"
+        filled_quantity_value = str(filled_quantity_value)
+        
         return cls(
             order_id=data.get("order_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
@@ -288,8 +298,8 @@ class Order:
             order_type=OrderType(data.get("order_type", "LONG")),
             trigger_type=TriggerType(data.get("trigger_type", "MARKET")),
             status=OrderStatus(data.get("status", "OPEN")),
-            quantity=str(data.get("quantity", "0")),
-            filled_quantity=str(data.get("filled_quantity", "0")),
+            quantity=str(quantity_value),
+            filled_quantity=str(filled_quantity_value),
             price=str(data.get("price", data.get("order_price", "0"))),
             leverage=str(data.get("leverage", "1")),
             created_at=_parse_datetime(data.get("created_at")),
@@ -341,14 +351,24 @@ class Position:
         else:
             takeprofit_price = data.get("takeprofit_price")
         
+        # Normalize terminology: Handle both quantity/size (API inconsistency)
+        # Always use "quantity" internally to prevent silent zeros
+        # This prevents "ghost math" where calculations silently evaluate to zero
+        quantity_value = normalize_quantity(data)
+        
+        # Normalize terminology: Handle both mark_price/market_price (API inconsistency)
+        # Always use "mark_price" internally to prevent silent zeros
+        # This prevents "ghost math" where calculations silently evaluate to zero
+        mark_price_value = normalize_mark_price(data)
+        
         return cls(
             position_id=data.get("position_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
             symbol=data.get("symbol", ""),
             side=OrderType(data.get("side", data.get("order_type", "LONG"))),
-            quantity=str(data.get("quantity", "0")),
+            quantity=str(quantity_value),
             entry_price=str(data.get("entry_price", "0")),
-            mark_price=str(data.get("mark_price", "0")),
+            mark_price=str(mark_price_value),
             leverage=str(data.get("leverage", "1")),
             margin=str(data.get("margin", "0")),
             unrealized_pnl=str(data.get("unrealized_pnl", "0")),
@@ -371,6 +391,28 @@ class Position:
         except (ValueError, ZeroDivisionError):
             pass
         return 0.0
+    
+    @property
+    def exposure(self) -> str:
+        """
+        Calculate position exposure (notional value) from exchange data.
+        
+        **CRITICAL**: This property calculates exposure from actual exchange data
+        (quantity and mark_price from the API response), NOT from any internal state.
+        This prevents "Ghost Positions" where exposure comes from state instead of exchange.
+        
+        Exposure = quantity * mark_price
+        
+        Returns:
+            Position exposure (notional value) as string
+        """
+        try:
+            qty = float(self.quantity)
+            price = float(self.mark_price)
+            exposure_value = qty * price
+            return str(exposure_value)
+        except (ValueError, TypeError):
+            return "0"
 
 
 @dataclass
