@@ -53,6 +53,7 @@ class PositionsAPI(BaseAPI):
             
         Example:
             >>> positions = client.positions.list_open()
+            >>> print(f"You have {len(positions)} open positions")
             >>> for pos in positions:
             ...     print(f"{pos.symbol}: {pos.side.value}")
             ...     print(f"  Quantity: {pos.quantity}")
@@ -119,6 +120,48 @@ class PositionsAPI(BaseAPI):
         """
         response = self._post(f"/futures/positions/{position_id}/close")
         return response.get("success", False)
+    
+    def close_all(self, symbol: Optional[str] = None, profitable_only: bool = False) -> int:
+        """
+        Close all open positions, optionally filtered.
+        
+        Args:
+            symbol: If provided, only close positions for this symbol
+            profitable_only: If True, only close positions with positive PnL
+            
+        Returns:
+            int: Number of positions closed
+            
+        Example:
+            >>> # Close all positions
+            >>> count = client.positions.close_all()
+            >>> print(f"Closed {count} positions")
+            >>> 
+            >>> # Close only BTC positions
+            >>> count = client.positions.close_all(symbol="BTCUSDT")
+            >>> 
+            >>> # Close only profitable positions (take profits)
+            >>> count = client.positions.close_all(profitable_only=True)
+        """
+        positions = self.list_open()
+        
+        # Filter by symbol if specified
+        if symbol:
+            positions = [p for p in positions if p.symbol == symbol or p.asset_id == symbol]
+        
+        # Filter by profitability if specified
+        if profitable_only:
+            positions = [p for p in positions if p.is_profitable]
+        
+        closed = 0
+        for pos in positions:
+            try:
+                if self.close(pos.position_id):
+                    closed += 1
+            except Exception:
+                pass  # Continue closing others even if one fails
+        
+        return closed
     
     def close_partial(self, position_id: str, quantity: str) -> Position:
         """
@@ -261,32 +304,93 @@ class PositionsAPI(BaseAPI):
     
     def get_history(
         self,
-        page: int = 1,
-        per_page: int = 50,
+        limit: Optional[int] = None,
     ) -> List[Position]:
         """
         Get position history (closed positions).
         
+        Automatically fetches all pages if no limit specified.
+        
         Args:
-            page: Page number (default: 1)
-            per_page: Items per page (default: 50)
+            limit: Maximum number of positions to return (None = fetch ALL)
             
         Returns:
             List[Position]: Historical positions
             
         Example:
+            >>> # Get ALL position history
             >>> history = client.positions.get_history()
+            >>> print(f"Total historical positions: {len(history)}")
+            >>> 
+            >>> # Calculate win rate
             >>> profitable = [p for p in history if float(p.realized_pnl) > 0]
-            >>> print(f"Win rate: {len(profitable)/len(history)*100:.1f}%")
+            >>> win_rate = len(profitable) / len(history) * 100 if history else 0
+            >>> print(f"Win rate: {win_rate:.1f}%")
+            >>> 
+            >>> # Get last 50 positions only
+            >>> recent = client.positions.get_history(limit=50)
         """
-        response = self._get("/futures/positions/history", {
-            "page": page,
-            "per_page": per_page,
-        })
-        data = response.get("data", response)
+        all_positions = []
+        page = 1
+        per_page = 100  # Fetch 100 at a time for efficiency
         
-        if isinstance(data, list):
-            return [Position.from_dict(item) for item in data]
+        while True:
+            response = self._get("/futures/positions/history", {
+                "page": page,
+                "per_page": per_page,
+            })
+            data = response.get("data", response)
+            
+            if isinstance(data, list):
+                items = data
+            else:
+                items = data.get("items", data.get("data", []))
+            
+            if not items:
+                break
+            
+            all_positions.extend([Position.from_dict(item) for item in items])
+            
+            # Stop if we've hit the limit
+            if limit and len(all_positions) >= limit:
+                return all_positions[:limit]
+            
+            # Stop if this was the last page
+            if len(items) < per_page:
+                break
+            
+            page += 1
         
-        items = data.get("items", data.get("data", []))
-        return [Position.from_dict(item) for item in items]
+        return all_positions
+    
+    def get_total_pnl(self) -> dict:
+        """
+        Get total PnL across all open positions.
+        
+        Returns:
+            dict: Summary with total_unrealized_pnl, total_margin, and position_count
+            
+        Example:
+            >>> summary = client.positions.get_total_pnl()
+            >>> print(f"Total PnL: ${summary['total_unrealized_pnl']:.2f}")
+            >>> print(f"Margin used: ${summary['total_margin']:.2f}")
+            >>> print(f"Positions: {summary['position_count']}")
+        """
+        positions = self.list_open()
+        
+        total_pnl = 0.0
+        total_margin = 0.0
+        
+        for pos in positions:
+            try:
+                total_pnl += float(pos.unrealized_pnl)
+                total_margin += float(pos.margin)
+            except (ValueError, TypeError):
+                pass
+        
+        return {
+            "total_unrealized_pnl": total_pnl,
+            "total_margin": total_margin,
+            "position_count": len(positions),
+            "pnl_percentage": (total_pnl / total_margin * 100) if total_margin > 0 else 0.0,
+        }
