@@ -26,11 +26,19 @@
 pip install git+https://github.com/DecentralizedJM/mudrex-trading-sdk.git
 ```
 
+### Install with MCP Server Support
+```bash
+pip install "git+https://github.com/DecentralizedJM/mudrex-trading-sdk.git#egg=mudrex-trading-sdk[mcp]"
+```
+
 ### Or clone and install locally
 ```bash
 git clone https://github.com/DecentralizedJM/mudrex-trading-sdk.git
 cd mudrex-trading-sdk
 pip install -e .
+
+# For MCP server support
+pip install -e ".[mcp]"
 ```
 
 ## ⚡ Quick Start
@@ -72,6 +80,93 @@ print(f"Order placed: {order.order_id}")
 for position in client.positions.list_open():
     print(f"{position.symbol}: {position.unrealized_pnl} PnL")
 ```
+
+## 🤖 Using with Claude Desktop (MCP Server)
+
+This SDK includes a built-in **Model Context Protocol (MCP) server** that lets you trade directly from Claude Desktop!
+
+### Setup
+
+1. **Install with MCP support:**
+   ```bash
+   pip install "git+https://github.com/DecentralizedJM/mudrex-trading-sdk.git#egg=mudrex-trading-sdk[mcp]"
+   ```
+
+2. **Configure Claude Desktop:**
+   
+   Edit your Claude Desktop config file:
+   - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+   
+   Add the Mudrex MCP server:
+   ```json
+   {
+     "mcpServers": {
+       "mudrex": {
+         "command": "python3",
+         "args": ["-m", "mudrex.mcp"],
+         "env": {
+           "MUDREX_API_SECRET": "your-api-secret-here"
+         }
+       }
+     }
+   }
+   ```
+   
+   Or if you're using `uv`:
+   ```json
+   {
+     "mcpServers": {
+       "mudrex": {
+         "command": "uv",
+         "args": ["run", "--with", "mudrex-trading-sdk[mcp]", "python", "-m", "mudrex.mcp"],
+         "env": {
+           "MUDREX_API_SECRET": "your-api-secret-here"
+         }
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop** and start trading with natural language:
+   - "Check my futures balance"
+   - "List all tradable markets"
+   - "Place a market buy order for 100 XRPUSDT with 5x leverage"
+   - "Show my open positions"
+   - "Set stop-loss at $95,000 for position xyz"
+
+### Available MCP Tools
+
+The MCP server provides 20 trading tools:
+
+| Category | Tools |
+|----------|-------|
+| **Wallet** | `get_spot_balance`, `get_futures_balance`, `transfer_to_futures`, `transfer_to_spot` |
+| **Markets** | `list_markets`, `get_market`, `search_markets` |
+| **Leverage** | `get_leverage`, `set_leverage` |
+| **Orders** | `create_market_order`, `create_limit_order`, `list_open_orders`, `get_order`, `cancel_order` |
+| **Positions** | `list_open_positions`, `get_position`, `close_position`, `set_position_stoploss`, `set_position_takeprofit`, `set_position_risk_levels` |
+
+### Running Standalone
+
+You can also run the MCP server standalone for testing:
+
+```bash
+export MUDREX_API_SECRET="your-secret"
+python3 -m mudrex.mcp
+```
+
+The server runs over STDIO and follows the MCP protocol specification.
+
+### Testing Your Setup
+
+Verify the MCP server is properly installed:
+
+```bash
+python3 test_mcp_setup.py
+```
+
+This will check that all MCP dependencies are installed correctly.
 
 ## 💡 Symbol-First Trading
 
@@ -344,6 +439,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [Mudrex Trading API Docs](https://docs.trade.mudrex.com/docs/overview)
 - [SDK Registry (All Languages)](https://github.com/DecentralizedJM/mudrex-sdk-registry)
 - [Mudrex Platform](https://mudrex.com)
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io)
 
 ## ⚠️ Disclaimer
 
