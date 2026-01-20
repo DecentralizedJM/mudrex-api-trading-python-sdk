@@ -68,6 +68,14 @@ class WalletBalance:
     """Spot wallet balance information.
     
     Fields match API response from /wallet/funds (POST).
+    
+    Attributes:
+        total: Total balance in the wallet
+        withdrawable: Amount available for withdrawal
+        available: Alias for withdrawable (for convenience)
+        invested: Amount currently invested
+        rewards: Rewards earned
+        currency: Currency code (default: USDT)
     """
     total: str
     withdrawable: str
@@ -76,26 +84,28 @@ class WalletBalance:
     coin_investable: str = "0"
     coinset_investable: str = "0"
     vault_investable: str = "0"
+    currency: str = "USDT"
     
     @property
     def available(self) -> str:
-        """Alias for withdrawable (backwards compatibility)."""
+        """Alias for withdrawable (for convenience and backwards compatibility)."""
         return self.withdrawable
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "WalletBalance":
         return cls(
             total=str(data.get("total", "0")),
-            withdrawable=str(data.get("withdrawable", "0")),
+            withdrawable=str(data.get("withdrawable", data.get("available", "0"))),
             invested=str(data.get("invested", "0")),
             rewards=str(data.get("rewards", "0")),
             coin_investable=str(data.get("coin_investable", "0")),
             coinset_investable=str(data.get("coinset_investable", "0")),
             vault_investable=str(data.get("vault_investable", "0")),
+            currency=str(data.get("currency", "USDT")),
         )
     
     def __repr__(self) -> str:
-        return f"WalletBalance(total={self.total}, withdrawable={self.withdrawable}, invested={self.invested})"
+        return f"WalletBalance(total={self.total}, available={self.withdrawable}, currency={self.currency})"
 
 
 @dataclass
@@ -103,9 +113,17 @@ class FuturesBalance:
     """Futures wallet balance information.
     
     Fields match API response from /futures/funds (GET).
+    
+    Attributes:
+        balance: Total futures wallet balance
+        locked_amount: Amount locked in positions/orders
+        available: Balance available for new trades (balance - locked)
+        unrealized_pnl: Unrealized profit/loss from open positions
+        first_time_user: Whether this is a first-time futures user
     """
     balance: str
     locked_amount: str = "0"
+    unrealized_pnl: str = "0"
     first_time_user: bool = False
     
     @property
@@ -126,6 +144,7 @@ class FuturesBalance:
         return cls(
             balance=str(data.get("balance", "0")),
             locked_amount=str(data.get("locked_amount", "0")),
+            unrealized_pnl=str(data.get("unrealized_pnl", data.get("pnl", "0"))),
             first_time_user=data.get("first_time_user", False),
         )
     
@@ -159,7 +178,25 @@ class TransferResult:
 
 @dataclass
 class Asset:
-    """Futures trading instrument/asset details."""
+    """Futures trading instrument/asset details.
+    
+    Attributes:
+        asset_id: Internal Mudrex asset ID
+        symbol: Trading symbol (e.g., "BTCUSDT")
+        base_currency: Base currency (e.g., "BTC")
+        quote_currency: Quote currency (e.g., "USDT")
+        min_quantity: Minimum order quantity
+        max_quantity: Maximum order quantity  
+        quantity_step: Quantity must be a multiple of this
+        min_leverage: Minimum allowed leverage
+        max_leverage: Maximum allowed leverage
+        maker_fee: Fee for maker orders (%)
+        taker_fee: Fee for taker orders (%)
+        is_active: Whether the asset is tradable
+        price_step: Price tick size for rounding
+        price: Current market price
+        name: Human-readable name (e.g., "Bitcoin")
+    """
     asset_id: str
     symbol: str
     base_currency: str
@@ -203,6 +240,45 @@ class Asset:
             price=data.get("price"),
             name=data.get("name"),
         )
+    
+    def __repr__(self) -> str:
+        price_str = f", price={self.price}" if self.price else ""
+        return f"Asset(symbol={self.symbol}, leverage={self.min_leverage}-{self.max_leverage}x{price_str})"
+
+
+@dataclass
+class Ticker:
+    """Current market ticker data for an asset.
+    
+    Attributes:
+        symbol: Trading symbol
+        price: Current market price
+        bid: Best bid price
+        ask: Best ask price
+        volume_24h: 24-hour trading volume
+        change_24h: 24-hour price change percentage
+    """
+    symbol: str
+    price: str
+    bid: Optional[str] = None
+    ask: Optional[str] = None
+    volume_24h: Optional[str] = None
+    change_24h: Optional[str] = None
+    high_24h: Optional[str] = None
+    low_24h: Optional[str] = None
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Ticker":
+        return cls(
+            symbol=data.get("symbol", ""),
+            price=str(data.get("price", data.get("last_price", "0"))),
+            bid=data.get("bid"),
+            ask=data.get("ask"),
+            volume_24h=data.get("volume_24h", data.get("volume")),
+            change_24h=data.get("change_24h", data.get("price_change_percent")),
+            high_24h=data.get("high_24h", data.get("high")),
+            low_24h=data.get("low_24h", data.get("low")),
+        )
 
 
 @dataclass  
@@ -211,13 +287,15 @@ class Leverage:
     asset_id: str
     leverage: str
     margin_type: MarginType
+    symbol: Optional[str] = None
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Leverage":
         return cls(
-            asset_id=data.get("asset_id", ""),
+            asset_id=data.get("asset_id", data.get("symbol", "")),
             leverage=str(data.get("leverage", "1")),
             margin_type=MarginType(data.get("margin_type", "ISOLATED")),
+            symbol=data.get("symbol"),
         )
 
 
@@ -265,7 +343,20 @@ class OrderRequest:
 
 @dataclass
 class Order:
-    """Represents a futures order."""
+    """Represents a futures order.
+    
+    Attributes:
+        order_id: Unique order identifier
+        asset_id: Asset/symbol being traded
+        symbol: Trading symbol (e.g., "BTCUSDT")
+        order_type: LONG or SHORT
+        trigger_type: MARKET or LIMIT
+        status: Current order status
+        quantity: Order quantity
+        filled_quantity: Amount filled so far
+        price: Order price
+        leverage: Leverage used
+    """
     order_id: str
     asset_id: str
     symbol: str
@@ -294,7 +385,7 @@ class Order:
         return cls(
             order_id=data.get("order_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
-            symbol=data.get("symbol", ""),
+            symbol=data.get("symbol", data.get("asset_id", "")),
             order_type=OrderType(data.get("order_type", "LONG")),
             trigger_type=TriggerType(data.get("trigger_type", "MARKET")),
             status=OrderStatus(data.get("status", "OPEN")),
@@ -307,6 +398,28 @@ class Order:
             stoploss_price=data.get("stoploss_price"),
             takeprofit_price=data.get("takeprofit_price"),
         )
+    
+    @property
+    def is_filled(self) -> bool:
+        """Check if order is fully filled."""
+        return self.status == OrderStatus.FILLED
+    
+    @property
+    def is_open(self) -> bool:
+        """Check if order is still open."""
+        return self.status in (OrderStatus.OPEN, OrderStatus.CREATED, OrderStatus.PARTIALLY_FILLED)
+    
+    @property
+    def fill_percentage(self) -> float:
+        """Calculate fill percentage."""
+        try:
+            qty = float(self.quantity)
+            filled = float(self.filled_quantity)
+            if qty > 0:
+                return (filled / qty) * 100
+        except (ValueError, ZeroDivisionError):
+            pass
+        return 0.0
 
 
 # ============================================================================
@@ -315,7 +428,22 @@ class Order:
 
 @dataclass
 class Position:
-    """Represents an open or closed futures position."""
+    """Represents an open or closed futures position.
+    
+    Attributes:
+        position_id: Unique position identifier
+        asset_id: Asset/symbol of the position
+        symbol: Trading symbol (e.g., "BTCUSDT")
+        side: LONG or SHORT
+        quantity: Position size
+        entry_price: Average entry price
+        mark_price: Current market price
+        leverage: Leverage used
+        margin: Margin allocated to position
+        unrealized_pnl: Unrealized profit/loss
+        realized_pnl: Realized profit/loss
+        liquidation_price: Price at which position will be liquidated
+    """
     position_id: str
     asset_id: str
     symbol: str
@@ -364,7 +492,7 @@ class Position:
         return cls(
             position_id=data.get("position_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
-            symbol=data.get("symbol", ""),
+            symbol=data.get("symbol", data.get("asset_id", "")),
             side=OrderType(data.get("side", data.get("order_type", "LONG"))),
             quantity=str(quantity_value),
             entry_price=str(data.get("entry_price", "0")),
@@ -413,6 +541,24 @@ class Position:
             return str(exposure_value)
         except (ValueError, TypeError):
             return "0"
+    
+    @property
+    def is_profitable(self) -> bool:
+        """Check if position is currently profitable."""
+        try:
+            return float(self.unrealized_pnl) > 0
+        except (ValueError, TypeError):
+            return False
+    
+    @property
+    def is_long(self) -> bool:
+        """Check if this is a long position."""
+        return self.side == OrderType.LONG
+    
+    @property
+    def is_short(self) -> bool:
+        """Check if this is a short position."""
+        return self.side == OrderType.SHORT
 
 
 @dataclass
@@ -453,7 +599,7 @@ class FeeRecord:
         return cls(
             fee_id=data.get("fee_id", data.get("id", "")),
             asset_id=data.get("asset_id", ""),
-            symbol=data.get("symbol", ""),
+            symbol=data.get("symbol", data.get("asset_id", "")),
             fee_amount=str(data.get("fee_amount", "0")),
             fee_type=data.get("fee_type", "TRADING"),
             order_id=data.get("order_id"),

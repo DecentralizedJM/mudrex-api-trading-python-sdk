@@ -13,9 +13,29 @@ This library provides a simple, intuitive interface for:
 
 Quick Start:
     >>> from mudrex import MudrexClient
+    >>> 
+    >>> # Initialize client
     >>> client = MudrexClient(api_secret="your-api-secret")
+    >>> 
+    >>> # Check balance
     >>> balance = client.wallet.get_spot_balance()
-    >>> print(f"Available: {balance.available}")
+    >>> print(f"Available: ${balance.available}")
+    >>> 
+    >>> # List ALL tradable assets (500+)
+    >>> assets = client.assets.list_all()
+    >>> print(f"Found {len(assets)} tradable assets")
+    >>> 
+    >>> # Get current price
+    >>> price = client.assets.get_price("BTCUSDT")
+    >>> print(f"BTC: ${price}")
+    >>> 
+    >>> # Place an order (use symbol directly!)
+    >>> order = client.orders.create_market_order(
+    ...     symbol="BTCUSDT",
+    ...     side="LONG",
+    ...     quantity="0.001",
+    ...     leverage="10"
+    ... )
 
 For more information, visit: https://docs.trade.mudrex.com
 """
@@ -26,34 +46,55 @@ from mudrex.exceptions import (
     MudrexAuthenticationError,
     MudrexRateLimitError,
     MudrexValidationError,
+    MudrexNotFoundError,
+    MudrexInsufficientBalanceError,
+    MudrexOrderError,
+    MudrexPositionError,
+    MudrexServerError,
 )
 from mudrex.models import (
     Order,
     OrderType,
+    OrderStatus,
     Position,
+    PositionStatus,
     TriggerType,
     MarginType,
     WalletBalance,
     FuturesBalance,
     Asset,
     Leverage,
+    Ticker,
+    FeeRecord,
 )
 
-__version__ = "1.0.0"
+__version__ = "1.2.0"
 __author__ = "Mudrex SDK Contributors"
 __all__ = [
+    # Client
     "MudrexClient",
+    # Exceptions (human-readable errors)
     "MudrexAPIError",
     "MudrexAuthenticationError",
     "MudrexRateLimitError",
     "MudrexValidationError",
+    "MudrexNotFoundError",
+    "MudrexInsufficientBalanceError",
+    "MudrexOrderError",
+    "MudrexPositionError",
+    "MudrexServerError",
+    # Models
     "Order",
     "OrderType",
+    "OrderStatus",
     "Position",
+    "PositionStatus",
     "TriggerType",
     "MarginType",
     "WalletBalance",
     "FuturesBalance",
     "Asset",
     "Leverage",
+    "Ticker",
+    "FeeRecord",
 ]

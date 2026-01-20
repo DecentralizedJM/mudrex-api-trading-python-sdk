@@ -141,16 +141,17 @@ def robust_order_placement(client: MudrexClient):
     
     This shows a production-ready approach to placing orders.
     """
-    asset_id = "BTCUSDT"
+    symbol = "BTCUSDT"  # Use symbol directly (recommended!)
     quantity = "0.001"
     leverage = "5"
     
-    print(f"\n🔄 Placing order for {asset_id}...")
+    print(f"\n🔄 Placing order for {symbol}...")
     
     try:
         # Step 1: Verify asset exists and get specs
-        asset = client.assets.get(asset_id)
+        asset = client.assets.get(symbol)
         print(f"   ✓ Asset verified: {asset.symbol}")
+        print(f"   ✓ Current price: ${asset.price}")
         
         # Step 2: Validate quantity
         if float(quantity) < float(asset.min_quantity):
@@ -164,22 +165,24 @@ def robust_order_placement(client: MudrexClient):
         
         # Step 4: Check balance
         balance = client.wallet.get_futures_balance()
-        # Rough margin estimate (simplified)
-        estimated_margin = float(quantity) * 100000 / float(leverage)  # Assuming ~$100k BTC
+        # Calculate margin estimate using actual price
+        price = float(asset.price) if asset.price else 100000
+        estimated_margin = float(quantity) * price / float(leverage)
         
-        if float(balance.balance) < estimated_margin:
+        if float(balance.available) < estimated_margin:
             print(f"   ❌ Insufficient margin: need ~${estimated_margin:.2f}")
+            print(f"      Available: ${balance.available}")
             return
         
-        print(f"   ✓ Balance sufficient: ${balance.balance}")
+        print(f"   ✓ Balance sufficient: ${balance.available}")
         
         # Step 5: Set leverage
-        client.leverage.set(asset_id, leverage, "ISOLATED")
+        client.leverage.set(symbol, leverage, "ISOLATED")
         print(f"   ✓ Leverage set to {leverage}x")
         
         # Step 6: Place order (commented out for safety)
         # order = client.orders.create_market_order(
-        #     asset_id=asset_id,
+        #     symbol=symbol,  # Use symbol, not asset_id
         #     side="LONG",
         #     quantity=quantity,
         #     leverage=leverage,
@@ -195,7 +198,7 @@ def robust_order_placement(client: MudrexClient):
     except MudrexValidationError as e:
         print(f"   ❌ Invalid parameters: {e.message}")
     except MudrexNotFoundError:
-        print(f"   ❌ Asset {asset_id} not found")
+        print(f"   ❌ Symbol {symbol} not found")
     except MudrexInsufficientBalanceError:
         print("   ❌ Insufficient balance")
     except MudrexAPIError as e:
