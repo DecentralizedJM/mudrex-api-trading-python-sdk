@@ -6,8 +6,150 @@ Defines all MCP tools that wrap the Mudrex SDK methods.
 Each tool maps directly to SDK functionality.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, TypedDict, Optional, List
 from mcp.server.fastmcp import FastMCP
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+# Type definitions for tool return values
+class ErrorResponse(TypedDict):
+    """Standard error response format."""
+    error: str
+    error_type: str
+    details: Optional[str]
+
+
+class BalanceResponse(TypedDict):
+    """Spot wallet balance response."""
+    total: str
+    available: str
+    rewards: str
+    withdrawable: str
+
+
+class FuturesBalanceResponse(TypedDict):
+    """Futures wallet balance response."""
+    balance: str
+    available_to_transfer: str
+    unrealized_pnl: str
+    margin_used: str
+
+
+class TransferResponse(TypedDict):
+    """Fund transfer response."""
+    success: bool
+    amount: str
+    from_wallet: str
+    to_wallet: str
+
+
+class MarketResponse(TypedDict):
+    """Market specification response."""
+    symbol: str
+    asset_id: str
+    min_quantity: str
+    max_quantity: str
+    quantity_step: str
+    min_leverage: str
+    max_leverage: str
+    maker_fee: str
+    taker_fee: str
+    price: str
+    price_step: str
+
+
+class LeverageResponse(TypedDict):
+    """Leverage settings response."""
+    symbol: str
+    leverage: str
+    margin_type: str
+
+
+class OrderResponse(TypedDict):
+    """Order response."""
+    order_id: str
+    symbol: str
+    side: str
+    quantity: str
+    leverage: str
+    status: str
+    fill_price: Optional[str]
+
+
+class PositionResponse(TypedDict):
+    """Position response."""
+    position_id: str
+    symbol: str
+    side: Optional[str]
+    quantity: str
+    entry_price: str
+    mark_price: str
+    leverage: str
+    unrealized_pnl: str
+    pnl_percentage: str
+    margin_used: Optional[str]
+
+
+class SuccessResponse(TypedDict):
+    """Generic success response."""
+    success: bool
+    message: Optional[str]
+
+
+def _handle_tool_error(func):
+    """
+    Decorator to handle exceptions in tool functions gracefully.
+    
+    Returns clean JSON error messages instead of raising exceptions,
+    making it easier for AI to understand and communicate errors.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            # Import here to avoid circular dependency
+            from mudrex.exceptions import (
+                MudrexAPIError,
+                MudrexAuthenticationError,
+                MudrexRateLimitError,
+                MudrexValidationError,
+            )
+            
+            # Determine error type and create user-friendly message
+            error_type = type(e).__name__
+            error_message = str(e)
+            
+            # Extract helpful details from known error types
+            if isinstance(e, MudrexAuthenticationError):
+                error_type = "AuthenticationError"
+                error_message = "Invalid API credentials. Please check your MUDREX_API_SECRET."
+            elif isinstance(e, MudrexRateLimitError):
+                error_type = "RateLimitError"
+                error_message = f"Rate limit exceeded. {error_message}"
+            elif isinstance(e, MudrexValidationError):
+                error_type = "ValidationError"
+                # Validation errors usually have good messages already
+                pass
+            elif "insufficient" in error_message.lower():
+                error_type = "InsufficientFundsError"
+                error_message = "Insufficient funds. Please transfer funds to your futures wallet or reduce order size."
+            elif "not found" in error_message.lower():
+                error_type = "NotFoundError"
+                error_message = f"{error_message}. Use search_markets or list_markets to find valid symbols."
+            
+            logger.error(f"Tool error in {func.__name__}: {error_type} - {error_message}")
+            
+            return ErrorResponse(
+                error=error_message,
+                error_type=error_type,
+                details=str(e) if str(e) != error_message else None
+            )
+    
+    wrapper.__name__ = func.__name__
+    wrapper.__doc__ = func.__doc__
+    return wrapper
 
 
 def register_tools(mcp: FastMCP, client: Any) -> None:
@@ -24,7 +166,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
     # ==================
     
     @mcp.tool()
-    def get_spot_balance() -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_spot_balance() -> BalanceResponse | ErrorResponse:
         """
         Get spot wallet balance including available funds and rewards.
         
@@ -32,15 +175,16 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Dictionary with total, available, rewards, and withdrawable amounts
         """
         balance = client.wallet.get_spot_balance()
-        return {
-            "total": balance.total,
-            "available": balance.available,
-            "rewards": balance.rewards,
-            "withdrawable": balance.withdrawable,
-        }
+        return BalanceResponse(
+            total=balance.total,
+            available=balance.available,
+            rewards=balance.rewards,
+            withdrawable=balance.withdrawable,
+        )
     
     @mcp.tool()
-    def get_futures_balance() -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_futures_balance() -> FuturesBalanceResponse | ErrorResponse:
         """
         Get futures wallet balance including unrealized PnL and margin used.
         
@@ -48,15 +192,16 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Dictionary with balance, available transfer, unrealized PnL, and margin used
         """
         balance = client.wallet.get_futures_balance()
-        return {
-            "balance": balance.balance,
-            "available_to_transfer": balance.available_to_transfer,
-            "unrealized_pnl": balance.unrealized_pnl,
-            "margin_used": balance.margin_used,
-        }
+        return FuturesBalanceResponse(
+            balance=balance.balance,
+            available_to_transfer=balance.available_to_transfer,
+            unrealized_pnl=balance.unrealized_pnl,
+            margin_used=balance.margin_used,
+        )
     
     @mcp.tool()
-    def transfer_to_futures(amount: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def transfer_to_futures(amount: str) -> TransferResponse | ErrorResponse:
         """
         Transfer funds from spot wallet to futures wallet.
         
@@ -67,15 +212,16 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Transfer confirmation with success status and amount
         """
         result = client.wallet.transfer_to_futures(amount)
-        return {
-            "success": result.success,
-            "amount": result.amount,
-            "from_wallet": result.from_wallet_type,
-            "to_wallet": result.to_wallet_type,
-        }
+        return TransferResponse(
+            success=result.success,
+            amount=result.amount,
+            from_wallet=result.from_wallet_type,
+            to_wallet=result.to_wallet_type,
+        )
     
     @mcp.tool()
-    def transfer_to_spot(amount: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def transfer_to_spot(amount: str) -> TransferResponse | ErrorResponse:
         """
         Transfer funds from futures wallet to spot wallet.
         
@@ -86,19 +232,20 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Transfer confirmation with success status and amount
         """
         result = client.wallet.transfer_to_spot(amount)
-        return {
-            "success": result.success,
-            "amount": result.amount,
-            "from_wallet": result.from_wallet_type,
-            "to_wallet": result.to_wallet_type,
-        }
+        return TransferResponse(
+            success=result.success,
+            amount=result.amount,
+            from_wallet=result.from_wallet_type,
+            to_wallet=result.to_wallet_type,
+        )
     
     # ==================
     # Asset Tools
     # ==================
     
     @mcp.tool()
-    def list_markets() -> list[Dict[str, Any]]:
+    @_handle_tool_error
+    def list_markets() -> List[Dict[str, Any]] | ErrorResponse:
         """
         List ALL tradable futures markets (500+ trading pairs).
         
@@ -122,7 +269,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         ]
     
     @mcp.tool()
-    def get_market(symbol: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_market(symbol: str) -> MarketResponse | ErrorResponse:
         """
         Get detailed specifications for a specific trading symbol.
         
@@ -133,22 +281,23 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Detailed market specifications including fees, limits, and current price
         """
         asset = client.assets.get(symbol)
-        return {
-            "symbol": asset.symbol,
-            "asset_id": asset.asset_id,
-            "min_quantity": asset.min_quantity,
-            "max_quantity": asset.max_quantity,
-            "quantity_step": asset.quantity_step,
-            "min_leverage": asset.min_leverage,
-            "max_leverage": asset.max_leverage,
-            "maker_fee": asset.maker_fee,
-            "taker_fee": asset.taker_fee,
-            "price": asset.price,
-            "price_step": asset.price_step,
-        }
+        return MarketResponse(
+            symbol=asset.symbol,
+            asset_id=asset.asset_id,
+            min_quantity=asset.min_quantity,
+            max_quantity=asset.max_quantity,
+            quantity_step=asset.quantity_step,
+            min_leverage=asset.min_leverage,
+            max_leverage=asset.max_leverage,
+            maker_fee=asset.maker_fee,
+            taker_fee=asset.taker_fee,
+            price=asset.price,
+            price_step=asset.price_step,
+        )
     
     @mcp.tool()
-    def search_markets(query: str) -> list[Dict[str, Any]]:
+    @_handle_tool_error
+    def search_markets(query: str) -> List[Dict[str, Any]] | ErrorResponse:
         """
         Search for trading symbols by name pattern.
         
@@ -174,7 +323,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
     # ==================
     
     @mcp.tool()
-    def get_leverage(symbol: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_leverage(symbol: str) -> LeverageResponse | ErrorResponse:
         """
         Get current leverage settings for a trading symbol.
         
@@ -185,14 +335,15 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Current leverage and margin type settings
         """
         leverage = client.leverage.get(symbol)
-        return {
-            "symbol": symbol,
-            "leverage": leverage.leverage,
-            "margin_type": leverage.margin_type.value,
-        }
+        return LeverageResponse(
+            symbol=symbol,
+            leverage=leverage.leverage,
+            margin_type=leverage.margin_type.value,
+        )
     
     @mcp.tool()
-    def set_leverage(symbol: str, leverage: str, margin_type: str = "ISOLATED") -> Dict[str, Any]:
+    @_handle_tool_error
+    def set_leverage(symbol: str, leverage: str, margin_type: str = "ISOLATED") -> LeverageResponse | ErrorResponse:
         """
         Set leverage and margin type for a trading symbol.
         
@@ -205,17 +356,18 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Updated leverage settings
         """
         result = client.leverage.set(symbol, leverage, margin_type)
-        return {
-            "symbol": symbol,
-            "leverage": result.leverage,
-            "margin_type": result.margin_type.value,
-        }
+        return LeverageResponse(
+            symbol=symbol,
+            leverage=result.leverage,
+            margin_type=result.margin_type.value,
+        )
     
     # ==================
     # Order Tools
     # ==================
     
     @mcp.tool()
+    @_handle_tool_error
     def create_market_order(
         symbol: str,
         side: str,
@@ -223,7 +375,7 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         leverage: str = "1",
         stoploss_price: str | None = None,
         takeprofit_price: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> OrderResponse | ErrorResponse:
         """
         Place a market order that executes immediately at current price.
         
@@ -246,17 +398,18 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             stoploss_price=stoploss_price,
             takeprofit_price=takeprofit_price,
         )
-        return {
-            "order_id": order.order_id,
-            "symbol": order.symbol,
-            "side": order.order_type.value,
-            "quantity": order.quantity,
-            "leverage": order.leverage,
-            "status": order.status,
-            "fill_price": order.fill_price,
-        }
+        return OrderResponse(
+            order_id=order.order_id,
+            symbol=order.symbol,
+            side=order.order_type.value,
+            quantity=order.quantity,
+            leverage=order.leverage,
+            status=order.status,
+            fill_price=order.fill_price,
+        )
     
     @mcp.tool()
+    @_handle_tool_error
     def create_limit_order(
         symbol: str,
         side: str,
@@ -265,7 +418,7 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         leverage: str = "1",
         stoploss_price: str | None = None,
         takeprofit_price: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> OrderResponse | ErrorResponse:
         """
         Place a limit order that executes when price reaches the specified level.
         
@@ -290,18 +443,19 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             stoploss_price=stoploss_price,
             takeprofit_price=takeprofit_price,
         )
-        return {
-            "order_id": order.order_id,
-            "symbol": order.symbol,
-            "side": order.order_type.value,
-            "quantity": order.quantity,
-            "price": order.order_price,
-            "leverage": order.leverage,
-            "status": order.status,
-        }
+        return OrderResponse(
+            order_id=order.order_id,
+            symbol=order.symbol,
+            side=order.order_type.value,
+            quantity=order.quantity,
+            leverage=order.leverage,
+            status=order.status,
+            fill_price=order.fill_price,
+        )
     
     @mcp.tool()
-    def list_open_orders() -> list[Dict[str, Any]]:
+    @_handle_tool_error
+    def list_open_orders() -> List[Dict[str, Any]] | ErrorResponse:
         """
         Get all open (unfilled) orders.
         
@@ -323,7 +477,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         ]
     
     @mcp.tool()
-    def get_order(order_id: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_order(order_id: str) -> OrderResponse | ErrorResponse:
         """
         Get details of a specific order.
         
@@ -334,19 +489,19 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Order details
         """
         order = client.orders.get(order_id)
-        return {
-            "order_id": order.order_id,
-            "symbol": order.symbol,
-            "side": order.order_type.value,
-            "quantity": order.quantity,
-            "price": order.order_price,
-            "fill_price": order.fill_price,
-            "status": order.status,
-            "leverage": order.leverage,
-        }
+        return OrderResponse(
+            order_id=order.order_id,
+            symbol=order.symbol,
+            side=order.order_type.value,
+            quantity=order.quantity,
+            leverage=order.leverage,
+            status=order.status,
+            fill_price=order.fill_price,
+        )
     
     @mcp.tool()
-    def cancel_order(order_id: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def cancel_order(order_id: str) -> Dict[str, Any] | ErrorResponse:
         """
         Cancel an open order.
         
@@ -367,7 +522,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
     # ==================
     
     @mcp.tool()
-    def list_open_positions() -> list[Dict[str, Any]]:
+    @_handle_tool_error
+    def list_open_positions() -> List[PositionResponse] | ErrorResponse:
         """
         Get all open positions with live PnL data from the exchange.
         
@@ -376,23 +532,24 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         """
         positions = client.positions.list_open()
         return [
-            {
-                "position_id": pos.position_id,
-                "symbol": pos.symbol,
-                "side": pos.side.value if pos.side else None,
-                "quantity": pos.quantity,
-                "entry_price": pos.entry_price,
-                "mark_price": pos.mark_price,
-                "leverage": pos.leverage,
-                "unrealized_pnl": pos.unrealized_pnl,
-                "pnl_percentage": pos.pnl_percentage,
-                "margin_used": pos.margin_used,
-            }
+            PositionResponse(
+                position_id=pos.position_id,
+                symbol=pos.symbol,
+                side=pos.side.value if pos.side else None,
+                quantity=pos.quantity,
+                entry_price=pos.entry_price,
+                mark_price=pos.mark_price,
+                leverage=pos.leverage,
+                unrealized_pnl=pos.unrealized_pnl,
+                pnl_percentage=pos.pnl_percentage,
+                margin_used=pos.margin_used,
+            )
             for pos in positions
         ]
     
     @mcp.tool()
-    def get_position(position_id: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def get_position(position_id: str) -> PositionResponse | ErrorResponse:
         """
         Get details of a specific position.
         
@@ -403,20 +560,22 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
             Position details with current PnL
         """
         pos = client.positions.get(position_id)
-        return {
-            "position_id": pos.position_id,
-            "symbol": pos.symbol,
-            "side": pos.side.value if pos.side else None,
-            "quantity": pos.quantity,
-            "entry_price": pos.entry_price,
-            "mark_price": pos.mark_price,
-            "leverage": pos.leverage,
-            "unrealized_pnl": pos.unrealized_pnl,
-            "pnl_percentage": pos.pnl_percentage,
-        }
+        return PositionResponse(
+            position_id=pos.position_id,
+            symbol=pos.symbol,
+            side=pos.side.value if pos.side else None,
+            quantity=pos.quantity,
+            entry_price=pos.entry_price,
+            mark_price=pos.mark_price,
+            leverage=pos.leverage,
+            unrealized_pnl=pos.unrealized_pnl,
+            pnl_percentage=pos.pnl_percentage,
+            margin_used=pos.margin_used,
+        )
     
     @mcp.tool()
-    def close_position(position_id: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def close_position(position_id: str) -> Dict[str, Any] | ErrorResponse:
         """
         Fully close a position.
         
@@ -433,7 +592,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         }
     
     @mcp.tool()
-    def set_position_stoploss(position_id: str, price: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def set_position_stoploss(position_id: str, price: str) -> Dict[str, Any] | ErrorResponse:
         """
         Set stop-loss for a position.
         
@@ -452,7 +612,8 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         }
     
     @mcp.tool()
-    def set_position_takeprofit(position_id: str, price: str) -> Dict[str, Any]:
+    @_handle_tool_error
+    def set_position_takeprofit(position_id: str, price: str) -> Dict[str, Any] | ErrorResponse:
         """
         Set take-profit for a position.
         
@@ -471,11 +632,12 @@ def register_tools(mcp: FastMCP, client: Any) -> None:
         }
     
     @mcp.tool()
+    @_handle_tool_error
     def set_position_risk_levels(
         position_id: str,
         stoploss_price: str | None = None,
         takeprofit_price: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, Any] | ErrorResponse:
         """
         Set both stop-loss and take-profit for a position.
         

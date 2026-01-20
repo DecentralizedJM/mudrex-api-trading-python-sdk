@@ -24,19 +24,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Order Management**: Place market/limit orders, view/cancel orders
 - **Position Management**: Monitor positions with live PnL, set SL/TP
 
+#### Type Safety & Error Handling
+- **TypedDict definitions** for all tool return types (better IDE support)
+- **Graceful error handling** - Returns clean JSON error messages instead of stack traces
+- **User-friendly error messages** with helpful suggestions:
+  - "Insufficient funds" → Suggests transferring funds or reducing order size
+  - "Not found" → Suggests using search_markets to find valid symbols
+  - Authentication errors → Clear message about checking API credentials
+- **Proper type hints** on all 20 MCP tools using union types
+
 ### Added
 - New module: `mudrex.mcp` with FastMCP server implementation
 - New tools module: `mudrex.mcp.tools` with 20 trading tools
 - New server module: `mudrex.mcp.server` with server initialization
+- TypedDict definitions: `ErrorResponse`, `BalanceResponse`, `OrderResponse`, etc.
+- Error handling decorator `_handle_tool_error` for clean error messages
 - Run with: `python -m mudrex.mcp`
 - Example: `examples/mcp_example.py`
-- Test scripts: `test_mcp_setup.py` and `verify_mcp_tools.py`
+- Test scripts: `test_mcp_setup.py`, `verify_mcp_tools.py`, `test_mcp_error_handling.py`
 - Documentation: `MCP_SETUP.md` and `MCP_QUICK_REFERENCE.md`
 - Optional dependency group: `[mcp]` in `pyproject.toml`
 
 ### Changed
 - Updated README with MCP setup instructions
 - Added Claude Desktop configuration examples
+- All MCP tools now return typed responses with proper error handling
 
 ## [1.2.0] - 2026-01-15
 
